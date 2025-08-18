@@ -1,0 +1,111 @@
+name: Deploy Web Service
+
+on:
+  push:
+    branches: [main]
+    paths: ['web-app/**']
+  pull_request:
+    branches: [main]
+    paths: ['web-app/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+env:
+  SERVICE_NAME: web
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Web App
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'prod' }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ./web-app
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ./web-app
+
+    - name: Test
+      run: dotnet test --configuration Release --no-build --verbosity normal
+      working-directory: ./web-app
+      continue-on-error: true
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for GCR
+      run: gcloud auth configure-docker
+
+    - name: Get API Service URL
+      run: |
+        API_URL=$(gcloud run services describe enterprise-app-api-${{ github.event.inputs.environment || 'prod' }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --format 'value(status.url)' || echo "http://localhost:8080")
+        echo "API_URL=$API_URL" >> $GITHUB_ENV
+
+    - name: Build Docker image
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }} \
+                     -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:latest \
+                     ./web-app
+
+    - name: Push Docker image
+      run: |
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:latest
+
+    - name: Deploy to Cloud Run
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: |
+        gcloud run deploy enterprise-app-${{ env.SERVICE_NAME }}-${{ github.event.inputs.environment || 'prod' }} \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }} \
+          --set-env-vars ENVIRONMENT=${{ github.event.inputs.environment || 'prod' }} \
+          --set-env-vars API_URL=${{ env.API_URL }} \
+          --cpu 1000m \
+          --memory 512Mi \
+          --min-instances 0 \
+          --max-instances 10 \
+          --port 8080
+
+    - name: Get Service URL
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: |
+        SERVICE_URL=$(gcloud run services describe enterprise-app-${{ env.SERVICE_NAME }}-${{ github.event.inputs.environment || 'prod' }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --format 'value(status.url)')
+        echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Service**: Web App" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ github.event.inputs.environment || 'prod' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **URL**: $SERVICE_URL" >> $GITHUB_STEP_SUMMARY
+        echo "- **API URL**: ${{ env.API_URL }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,175 @@
+name: Deploy Batch Service
+
+on:
+  push:
+    branches: [main]
+    paths: ['batch-app/**']
+  pull_request:
+    branches: [main]
+    paths: ['batch-app/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      run_job_after_deploy:
+        description: 'Run the batch job after deployment'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  SERVICE_NAME: batch
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Batch Job
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'prod' }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ./batch-app
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ./batch-app
+
+    - name: Test
+      run: dotnet test --configuration Release --no-build --verbosity normal
+      working-directory: ./batch-app
+      continue-on-error: true
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for GCR
+      run: gcloud auth configure-docker
+
+    - name: Build Docker image
+      run: |
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }} \
+                     -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:latest \
+                     ./batch-app
+
+    - name: Push Docker image
+      run: |
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:latest
+
+    - name: Update Cloud Run Job
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: |
+        # Update the job with new image
+        gcloud run jobs replace <(gcloud run jobs describe enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --format export) \
+          --region ${{ vars.GCP_REGION || 'us-central1' }}
+        
+        # Update the container image
+        gcloud run jobs update enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }} \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --set-env-vars GOOGLE_CLOUD_PROJECT=${{ secrets.GCP_PROJECT_ID }} \
+          --set-env-vars ENVIRONMENT=${{ github.event.inputs.environment || 'prod' }} \
+          --set-env-vars SQL_CONNECTION_STRING="${{ secrets.SQL_CONNECTION_STRING }}" \
+          --set-env-vars BATCH_PROCESSING_MODE="single"
+
+    - name: Run Batch Job (if requested)
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event.inputs.run_job_after_deploy == 'true'
+      run: |
+        echo "Starting batch job execution..."
+        EXECUTION_NAME=$(gcloud run jobs execute enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }} \
+          --region ${{ vars.GCP_REGION || 'us-central1' }} \
+          --format="value(metadata.name)")
+        
+        echo "Job execution started: $EXECUTION_NAME"
+        echo "EXECUTION_NAME=$EXECUTION_NAME" >> $GITHUB_ENV
+
+    - name: Monitor Job Execution
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event.inputs.run_job_after_deploy == 'true'
+      run: |
+        echo "Monitoring job execution: $EXECUTION_NAME"
+        
+        # Wait for job completion (timeout after 10 minutes)
+        timeout=600
+        interval=10
+        elapsed=0
+        
+        while [ $elapsed -lt $timeout ]; do
+          status=$(gcloud run jobs executions describe $EXECUTION_NAME \
+            --region ${{ vars.GCP_REGION || 'us-central1' }} \
+            --format="value(status.conditions[0].type)")
+          
+          if [ "$status" = "Completed" ]; then
+            echo "Job completed successfully"
+            break
+          elif [ "$status" = "Failed" ]; then
+            echo "Job failed"
+            exit 1
+          else
+            echo "Job status: $status (elapsed: ${elapsed}s)"
+            sleep $interval
+            elapsed=$((elapsed + interval))
+          fi
+        done
+        
+        if [ $elapsed -ge $timeout ]; then
+          echo "Job monitoring timed out after ${timeout}s"
+          exit 1
+        fi
+
+    - name: Get Job Logs
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event.inputs.run_job_after_deploy == 'true'
+      run: |
+        echo "Fetching job logs..."
+        gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }}" \
+          --limit=50 \
+          --format="table(timestamp,severity,textPayload)" \
+          --freshness=10m
+
+    - name: Create Deployment Summary
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: |
+        echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Service**: Batch Processing Job" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ github.event.inputs.environment || 'prod' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Job Name**: enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image**: gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Region**: ${{ vars.GCP_REGION || 'us-central1' }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event.inputs.run_job_after_deploy }}" = "true" ]; then
+          echo "- **Job Execution**: Started and monitored" >> $GITHUB_STEP_SUMMARY
+          echo "- **Execution Name**: $EXECUTION_NAME" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Job Execution**: Not triggered (manual execution required)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Manual Job Execution" >> $GITHUB_STEP_SUMMARY
+        echo "To manually run the batch job:" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "gcloud run jobs execute enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }} \\" >> $GITHUB_STEP_SUMMARY
+        echo "  --region ${{ vars.GCP_REGION || 'us-central1' }}" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

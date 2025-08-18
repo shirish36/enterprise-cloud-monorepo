@@ -1,0 +1,79 @@
+# .NET Build and Runtime
+bin/
+obj/
+out/
+*.user
+*.suo
+*.cache
+*.docstates
+*.userprefs
+*.pidb
+*.pdb
+*.sln.cache
+
+# Visual Studio
+.vs/
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.log
+*.publishproj
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+
+# Environment Files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+*.cover
+.nyc_output
+.coverage
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.dockerignore
+.docker/
+
+# Dependencies
+node_modules/
+packages/

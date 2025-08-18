@@ -1,0 +1,24 @@
+# Terraform Variables Configuration
+# Copy this file to terraform.tfvars and update the values
+
+# Required Variables
+project_id = "your-gcp-project-id-here"
+
+# Optional Variables (uncomment and modify as needed)
+# region = "us-central1"
+# environment = "prod"
+# app_name = "enterprise-app"
+# container_registry = "gcr.io"
+# image_tag = "latest"
+
+# Resource Allocation
+# api_cpu = "1000m"
+# api_memory = "512Mi"
+# web_cpu = "1000m"
+# web_memory = "512Mi"
+# batch_cpu = "2000m"
+# batch_memory = "1Gi"
+
+# Scaling Configuration
+# min_instances = 0
+# max_instances = 10
