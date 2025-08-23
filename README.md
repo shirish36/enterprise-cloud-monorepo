@@ -2,7 +2,7 @@
 
 This repository contains a complete enterprise application stack designed for deployment on Google Cloud Platform (GCP) using Cloud Run. The solution includes three microservices: API, Web Application, and Batch Processing.
 
-## 🏗️ Architecture
+## 🏗️ Architecture Dummy
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
