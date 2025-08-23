@@ -64,7 +64,7 @@ resource "google_cloud_run_service" "api_service" {
       service_account_name = google_service_account.cloud_run_sa.email
       
       containers {
-        image = "${var.container_registry}/${var.project_id}/${var.app_name}-api:${var.image_tag}"
+  image = "${var.container_registry}/${var.project_id}/enterprise-api:${var.image_tag}"
         
         resources {
           limits = {
@@ -116,7 +116,7 @@ resource "google_cloud_run_service" "web_service" {
       service_account_name = google_service_account.cloud_run_sa.email
       
       containers {
-        image = "${var.container_registry}/${var.project_id}/${var.app_name}-web:${var.image_tag}"
+  image = "${var.container_registry}/${var.project_id}/enterprise-web:${var.image_tag}"
         
         resources {
           limits = {
@@ -209,7 +209,7 @@ resource "google_cloud_run_v2_job" "batch_job" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-        image = "${var.container_registry}/${var.project_id}/${var.app_name}-batch:${var.image_tag}"
+  image = "${var.container_registry}/${var.project_id}/enterprise-batch:${var.image_tag}"
 
         resources {
           limits = {
