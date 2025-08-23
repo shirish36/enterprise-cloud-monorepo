@@ -207,37 +207,22 @@ resource "google_cloud_run_v2_job" "batch_job" {
   template {
     template {
       service_account = google_service_account.cloud_run_sa.email
-      
-      # Enable volume mounting for GCS bucket
-      volumes {
-        name = "gcs-bucket"
-        gcs {
-          bucket    = google_storage_bucket.processing_bucket.name
-          read_only = false
-        }
-      }
 
       containers {
         image = "${var.container_registry}/${var.project_id}/${var.app_name}-batch:${var.image_tag}"
-        
+
         resources {
           limits = {
             cpu    = var.batch_cpu
             memory = var.batch_memory
           }
         }
-        
-        # Mount the GCS bucket as a volume
-        volume_mounts {
-          name       = "gcs-bucket"
-          mount_path = "/mnt/gcs-bucket"
-        }
 
         env {
           name  = "GOOGLE_CLOUD_PROJECT"
           value = var.project_id
         }
-        
+
         env {
           name  = "ENVIRONMENT"
           value = var.environment
@@ -249,23 +234,13 @@ resource "google_cloud_run_v2_job" "batch_job" {
         }
 
         env {
-          name  = "INPUT_DIRECTORY"
-          value = "/mnt/gcs-bucket/input"
-        }
-
-        env {
-          name  = "PROCESSED_DIRECTORY" 
-          value = "/mnt/gcs-bucket/processed"
-        }
-
-        env {
-          name  = "FAILED_DIRECTORY"
-          value = "/mnt/gcs-bucket/failed"
-        }
-
-        env {
           name  = "BATCH_PROCESSING_MODE"
           value = var.batch_processing_mode
+        }
+
+        env {
+          name  = "BUCKET_NAME"
+          value = google_storage_bucket.processing_bucket.name
         }
       }
     }
