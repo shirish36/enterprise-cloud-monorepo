@@ -1,12 +1,12 @@
 # Terraform Variables Configuration
 # This file is used by Terraform to set variable values for your deployment
 
+
 project_id = "gifted-palace-468618-q5"
 region     = "us-central1"
 environment = "development"
 app_name    = "enterprise-app"
 container_registry = "gcr.io"
-image_tag   = "latest"
 
 # Resource Allocation (uncomment and adjust as needed)
 api_cpu = "1000m"
