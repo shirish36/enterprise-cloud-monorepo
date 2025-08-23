@@ -98,6 +98,8 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Terraform Init
         run: terraform -chdir=infra init
+      - name: Wait for images to be available in GAR
+        run: sleep 60
       - name: Terraform Apply
         run: terraform -chdir=infra apply -auto-approve
         env:
