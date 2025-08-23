@@ -1,4 +1,9 @@
+
 name: Deploy Infra and Apps (GCP Cloud Run Suite)
+
+permissions:
+  id-token: write
+  contents: read
 
 on:
   push:
