@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Google.Cloud.Logging.V2;
+using Google.Cloud.Diagnostics.AspNetCore;
 using BatchApp.Services;
 using BatchApp.Models;
 
@@ -22,15 +23,17 @@ builder.Services.AddSingleton<IFileProcessor, FileProcessor>();
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddHostedService<BatchProcessor>();
 
-// Add Google Cloud Logging
-var projectId = Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT") ?? 
-                builder.Configuration["GoogleCloud:ProjectId"];
-if (!string.IsNullOrEmpty(projectId))
-{
-    builder.Logging.AddGoogle(projectId);
-}
 
 var host = builder.Build();
+
+// Add Google Cloud Logging to ILoggerFactory after building the host
+var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+var serviceProvider = host.Services;
+var projectId = Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT") ?? builder.Configuration["GoogleCloud:ProjectId"];
+if (!string.IsNullOrEmpty(projectId))
+{
+    loggerFactory.AddGoogle(serviceProvider, projectId);
+}
 
 try
 {
