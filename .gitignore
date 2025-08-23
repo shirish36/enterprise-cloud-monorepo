@@ -25,7 +25,7 @@ out/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
-terraform.tfvars
+#terraform.tfvars
 *.tfplan
 
 # Environment Files
