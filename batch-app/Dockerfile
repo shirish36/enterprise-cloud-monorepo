@@ -10,9 +10,12 @@ RUN dotnet restore "batch-app.csproj"
 COPY . .
 RUN dotnet build "batch-app.csproj" -c Release -o /app/build
 
+
 # Publish the application
 FROM build AS publish
+COPY appsettings.json ./
 RUN dotnet publish "batch-app.csproj" -c Release -o /app/publish /p:UseAppHost=false
+COPY appsettings.json /app/publish/
 
 # Use the official .NET 8 runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
