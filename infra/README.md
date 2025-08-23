@@ -2,7 +2,7 @@
 
 Terraform configuration for deploying the enterprise application stack to Google Cloud Platform.
 
-## Overview
+## Overview @@
 
 This Terraform configuration provisions:
 - **Cloud Run Services**: API, Web, and Batch applications
