@@ -25,15 +25,28 @@ public class DatabaseService : IDatabaseService
     {
         _settings = settings.Value;
         _logger = logger;
-        
         // Get connection string from environment variable or configuration
-        _connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING") ?? 
-                           _settings.ConnectionString;
-        
+        _connectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING") ?? _settings.ConnectionString;
         if (string.IsNullOrEmpty(_connectionString))
         {
             throw new InvalidOperationException("Database connection string is not configured. Set SQL_CONNECTION_STRING environment variable or Database:ConnectionString in configuration.");
         }
+        // Log the DB connection string with password masked
+        if (!string.IsNullOrEmpty(_connectionString))
+        {
+            var masked = MaskPassword(_connectionString);
+            _logger.LogInformation("Database connection string: {ConnectionString}", masked);
+        }
+    }
+
+    private string MaskPassword(string connStr)
+    {
+        // Simple mask for Password=...; or pwd=...;
+        return System.Text.RegularExpressions.Regex.Replace(
+            connStr,
+            @"(Password|pwd)=[^;]*",
+            "$1=******",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
     public async Task<bool> TestConnectionAsync()

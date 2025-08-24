@@ -209,7 +209,7 @@ resource "google_cloud_run_v2_job" "batch_job" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-  image = "${var.container_registry}/${var.project_id}/enterprise-batch:${var.image_tag}"
+        image = "${var.container_registry}/${var.project_id}/enterprise-batch:${var.image_tag}"
 
         resources {
           limits = {
@@ -241,6 +241,18 @@ resource "google_cloud_run_v2_job" "batch_job" {
         env {
           name  = "BUCKET_NAME"
           value = google_storage_bucket.processing_bucket.name
+        }
+
+        volume_mounts {
+          name = "gcs-bucket"
+          mount_path = "/mnt/gcs-bucket"
+        }
+      }
+
+      volumes {
+        name = "gcs-bucket"
+        gcs {
+          bucket = google_storage_bucket.processing_bucket.name
         }
       }
     }
