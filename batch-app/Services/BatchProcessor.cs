@@ -99,10 +99,12 @@ public class BatchProcessor : BackgroundService
 
     private async Task ProcessBatchAsync()
     {
-        _logger.LogInformation("Listing and reading all files in /data/in");
-        await _fileProcessor.LogAllFileContentsAsync();
-        _logger.LogInformation("Batch job completed: all files in /data/in have been listed and their contents logged.");
-
+        _logger.LogInformation("Listing all files in /data/in");
+        var files = await _fileProcessor.GetFilesToProcessAsync();
+        foreach (var file in files)
+        {
+            _logger.LogInformation("File to process: {FileName}", System.IO.Path.GetFileName(file));
+        }
         // Log DB table contents after processing
         await _databaseService.LogAllTablesAsync();
     }

@@ -138,6 +138,7 @@ public class FileProcessor : IFileProcessor
     // New methods for product and order CSVs
     private async Task<(int processed, int failed)> ProcessProductCsvAsync(string filePath, string batchId)
     {
+        _logger.LogInformation("Starting processing of product CSV: {FilePath}", filePath);
         var processed = 0;
         var failed = 0;
         var products = new List<ProductRecord>();
@@ -158,6 +159,7 @@ public class FileProcessor : IFileProcessor
                         Price = csv.GetField<decimal>("Price"),
                         CreatedAt = DateTime.UtcNow
                     };
+                    _logger.LogDebug("Parsed product row: Name={Name}, Description={Description}, Price={Price}", product.Name, product.Description, product.Price);
                     products.Add(product);
                     processed++;
                 }
@@ -169,6 +171,7 @@ public class FileProcessor : IFileProcessor
             }
             if (products.Any())
             {
+                _logger.LogInformation("Inserting {Count} products into database from file: {FilePath}", products.Count, filePath);
                 await _databaseService.InsertProductsAsync(products);
             }
         }
@@ -182,6 +185,7 @@ public class FileProcessor : IFileProcessor
 
     private async Task<(int processed, int failed)> ProcessOrderCsvAsync(string filePath, string batchId)
     {
+        _logger.LogInformation("Starting processing of order CSV: {FilePath}", filePath);
         var processed = 0;
         var failed = 0;
         var orders = new List<OrderRecord>();
@@ -201,6 +205,7 @@ public class FileProcessor : IFileProcessor
                         Quantity = csv.GetField<int>("Quantity"),
                         OrderDate = csv.GetField<DateTime>("OrderDate")
                     };
+                    _logger.LogDebug("Parsed order row: ProductId={ProductId}, Quantity={Quantity}, OrderDate={OrderDate}", order.ProductId, order.Quantity, order.OrderDate);
                     orders.Add(order);
                     processed++;
                 }
@@ -212,6 +217,7 @@ public class FileProcessor : IFileProcessor
             }
             if (orders.Any())
             {
+                _logger.LogInformation("Inserting {Count} orders into database from file: {FilePath}", orders.Count, filePath);
                 await _databaseService.InsertOrdersAsync(orders);
             }
         }
