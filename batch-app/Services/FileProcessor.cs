@@ -23,14 +23,17 @@ public class FileProcessor : IFileProcessor
     private readonly FileProcessingSettings _settings;
     private readonly ILogger<FileProcessor> _logger;
     private readonly string _inputDirectory;
-    // Removed processed and failed directory references
+    private readonly IDatabaseService _databaseService;
 
-    public FileProcessor(IOptions<FileProcessingSettings> settings, ILogger<FileProcessor> logger)
+    public FileProcessor(
+        IOptions<FileProcessingSettings> settings,
+        ILogger<FileProcessor> logger,
+        IDatabaseService databaseService)
     {
         _settings = settings.Value;
         _logger = logger;
+        _databaseService = databaseService;
         _inputDirectory = _settings.InputDirectory;
-    // Removed initialization of processed and failed directories
     }
 
     public Task ValidateConfigurationAsync()
@@ -275,12 +278,22 @@ public class FileProcessor : IFileProcessor
 
     private async Task ProcessRecordBatch(List<DataRecord> records, string batchId)
     {
-        // This would typically call the database service
-        // For now, we'll just log the batch processing
-        _logger.LogDebug("Processing batch of {RecordCount} records for batch {BatchId}", records.Count, batchId);
-        
-        // Simulate processing time
-        await Task.Delay(100);
+        if (records == null || records.Count == 0)
+        {
+            _logger.LogDebug("No records to upload for batch {BatchId}", batchId);
+            return;
+        }
+        _logger.LogDebug("Uploading batch of {RecordCount} records to SQL DB for batch {BatchId}", records.Count, batchId);
+        try
+        {
+            await _databaseService.InsertDataRecordsAsync(records);
+            _logger.LogInformation("Uploaded {RecordCount} records to SQL DB for batch {BatchId}", records.Count, batchId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload records to SQL DB for batch {BatchId}", batchId);
+            throw;
+        }
     }
 
     public Task MoveFileAsync(string sourceFilePath, string destinationDirectory)
