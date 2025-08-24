@@ -18,6 +18,7 @@ public interface IFileProcessor
 
 public class FileProcessor : IFileProcessor
 {
+    // All file I/O is performed on local directories. GCS bucket must be mounted at /data/in by Cloud Run.
     private readonly FileProcessingSettings _settings;
     private readonly ILogger<FileProcessor> _logger;
     private readonly string _inputDirectory;
@@ -33,27 +34,25 @@ public class FileProcessor : IFileProcessor
         _failedDirectory = _settings.FailedDirectory;
     }
 
-    public async Task ValidateConfigurationAsync()
+    public Task ValidateConfigurationAsync()
     {
         _logger.LogInformation("Validating file processing configuration...");
         if (!Directory.Exists(_inputDirectory))
         {
             throw new DirectoryNotFoundException($"Input directory does not exist: {_inputDirectory}");
         }
-        await EnsureDirectoryExistsAsync(_processedDirectory);
-        await EnsureDirectoryExistsAsync(_failedDirectory);
-        await TestDirectoryPermissionsAsync(_inputDirectory, "read");
-        await TestDirectoryPermissionsAsync(_processedDirectory, "write");
-        await TestDirectoryPermissionsAsync(_failedDirectory, "write");
+        // No need to create or check permissions for processed/failed directories; these are managed by the GCS mount.
         _logger.LogInformation("File processing configuration validated successfully");
         _logger.LogInformation("Input Directory: {InputDirectory}", _inputDirectory);
         _logger.LogInformation("Processed Directory: {ProcessedDirectory}", _processedDirectory);
         _logger.LogInformation("Failed Directory: {FailedDirectory}", _failedDirectory);
         _logger.LogInformation("File Pattern: {FilePattern}", _settings.FilePattern);
+        return Task.CompletedTask;
     }
 
-    public async Task<IEnumerable<string>> GetFilesToProcessAsync()
+    public Task<IEnumerable<string>> GetFilesToProcessAsync()
     {
+        // Reads files from the local mount path (e.g., /data/in) as provided by Cloud Run GCS volume mount
         try
         {
             var files = Directory.GetFiles(_inputDirectory, _settings.FilePattern, SearchOption.TopDirectoryOnly)
@@ -64,12 +63,12 @@ public class FileProcessor : IFileProcessor
             {
                 _logger.LogDebug("File to process: {FileName} ({FileSize} bytes)", Path.GetFileName(file), new FileInfo(file).Length);
             }
-            return files;
+            return Task.FromResult<IEnumerable<string>>(files);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error scanning input directory: {Directory}", _inputDirectory);
-            return Enumerable.Empty<string>();
+            return Task.FromResult<IEnumerable<string>>(Enumerable.Empty<string>());
         }
     }
 
@@ -246,11 +245,11 @@ public class FileProcessor : IFileProcessor
         return (processed, failed);
     }
 
-    private async Task<(int processed, int failed)> ProcessJsonFileAsync(string filePath, string batchId)
+    private Task<(int processed, int failed)> ProcessJsonFileAsync(string filePath, string batchId)
     {
         // Placeholder for JSON processing - implement based on your JSON structure
         _logger.LogInformation("JSON file processing not yet implemented for: {FileName}", Path.GetFileName(filePath));
-        return (0, 1);
+    return Task.FromResult((0, 1));
     }
 
     private async Task ProcessRecordBatch(List<DataRecord> records, string batchId)
@@ -263,49 +262,35 @@ public class FileProcessor : IFileProcessor
         await Task.Delay(100);
     }
 
-    public async Task MoveFileAsync(string sourceFilePath, string destinationDirectory)
+    public Task MoveFileAsync(string sourceFilePath, string destinationDirectory)
     {
-        try
+        if (!Directory.Exists(destinationDirectory))
         {
-            if (!Directory.Exists(destinationDirectory))
-            {
-                Directory.CreateDirectory(destinationDirectory);
-            }
-            var fileName = Path.GetFileName(sourceFilePath);
-            var destinationFilePath = Path.Combine(destinationDirectory, fileName);
-            if (File.Exists(destinationFilePath))
-            {
-                var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-                var extension = Path.GetExtension(fileName);
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-                fileName = $"{nameWithoutExt}_{timestamp}{extension}";
-                destinationFilePath = Path.Combine(destinationDirectory, fileName);
-            }
-            File.Move(sourceFilePath, destinationFilePath);
-            _logger.LogInformation("Moved file from {Source} to {Destination}", sourceFilePath, destinationFilePath);
+            Directory.CreateDirectory(destinationDirectory);
         }
-        catch (Exception ex)
+        var fileName = Path.GetFileName(sourceFilePath);
+        var destinationFilePath = Path.Combine(destinationDirectory, fileName);
+        if (File.Exists(destinationFilePath))
         {
-            _logger.LogError(ex, "Error moving file from {Source} to {Destination}", sourceFilePath, destinationDirectory);
-            throw;
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName);
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            fileName = $"{nameWithoutExt}_{timestamp}{extension}";
+            destinationFilePath = Path.Combine(destinationDirectory, fileName);
         }
+        File.Move(sourceFilePath, destinationFilePath);
+        _logger.LogInformation("Moved file from {Source} to {Destination}", sourceFilePath, destinationFilePath);
+        return Task.CompletedTask;
     }
 
-    public async Task DeleteFileAsync(string filePath)
+    public Task DeleteFileAsync(string filePath)
     {
-        try
+        if (File.Exists(filePath))
         {
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-                _logger.LogInformation("Deleted file: {FilePath}", filePath);
-            }
+            File.Delete(filePath);
+            _logger.LogInformation("Deleted file: {FilePath}", filePath);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting file: {FilePath}", filePath);
-            throw;
-        }
+        return Task.CompletedTask;
     }
 
 }

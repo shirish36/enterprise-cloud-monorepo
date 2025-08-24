@@ -10,10 +10,10 @@ public class BatchSettings
 
 public class FileProcessingSettings
 {
-    public string BucketName { get; set; } = string.Empty;
-    public string InputDirectory { get; set; } = "/mnt/gcs-bucket";
-    public string ProcessedDirectory { get; set; } = "/mnt/gcs-bucket/processed";
-    public string FailedDirectory { get; set; } = "/mnt/gcs-bucket/failed";
+    // These directories are expected to be local mount paths (e.g., GCS bucket mounted at /data/in)
+    public string InputDirectory { get; set; } = "/data/in";
+    public string ProcessedDirectory { get; set; } = "/data/processed";
+    public string FailedDirectory { get; set; } = "/data/failed";
     public string FilePattern { get; set; } = "*.csv";
     public bool DeleteAfterProcessing { get; set; } = false;
     public int MaxFilesPerBatch { get; set; } = 10;

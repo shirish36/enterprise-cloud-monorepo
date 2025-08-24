@@ -1,10 +1,31 @@
+
 # Batch Processing Service
 
-A .NET 8 Console Application for processing files from GCS bucket and storing data in MS SQL Server, designed for deployment as Cloud Run Jobs with volume mounting.
+
+A .NET 8 Console Application for processing files from a GCS bucket (mounted as a local directory) and storing data in MS SQL Server, designed for deployment as Cloud Run Jobs with GCS volume mounting.
+
+## GCS Volume Mounting (Cloud Run Jobs)
+
+**How it works:**
+- The GCS bucket is mounted by Cloud Run as a local directory (e.g., `/data/in`).
+- The .NET batch app does not require any GCS SDK, gcsfuse, or bucket configuration.
+- The app simply reads files from the mount path using standard file I/O APIs (`System.IO`).
+- All GCS authentication and mounting is handled by Cloud Run configuration, not by the app.
+
+**Example:**
+If you mount your bucket at `/data/in`, the app will process files from `/data/in` as if it were a local folder.
+
+**Environment variables:**
+- `INPUT_DIRECTORY`: Input files location (e.g., `/data/in`)
+- `PROCESSED_DIRECTORY`: Processed files location (e.g., `/data/processed`)
+- `FAILED_DIRECTORY`: Failed files location (e.g., `/data/failed`)
+
+**No GCS logic is required in the .NET code.**
+
 
 ## Features
 
-- **GCS Volume Mounting**: Direct access to GCS bucket as local filesystem
+- **GCS Volume Mounting**: No GCS SDK or gcsfuse required; direct access to GCS bucket as a local directory
 - **File Processing**: Support for CSV, text, and JSON files
 - **Database Integration**: Bulk insert to MS SQL Server with retry logic
 - **Error Handling**: Comprehensive error tracking and file management
@@ -14,11 +35,11 @@ A .NET 8 Console Application for processing files from GCS bucket and storing da
 
 ## Architecture
 
+
 ```
-GCS Bucket (mounted as /mnt/gcs-bucket)
-├── input/          # Files to be processed
-├── processed/      # Successfully processed files
-└── failed/         # Files that failed processing
+GCS Bucket (mounted as /data/in)
+├── file1.csv      # Files to be processed
+├── ...
 ```
 
 ## File Processing Flow
@@ -36,10 +57,11 @@ GCS Bucket (mounted as /mnt/gcs-bucket)
 - `SQL_CONNECTION_STRING`: MS SQL Server connection string
 - `GOOGLE_CLOUD_PROJECT`: GCP project ID for logging
 
+
 ### Optional (with defaults)
-- `INPUT_DIRECTORY`: Input files location (`/mnt/gcs-bucket/input`)
-- `PROCESSED_DIRECTORY`: Processed files location (`/mnt/gcs-bucket/processed`)
-- `FAILED_DIRECTORY`: Failed files location (`/mnt/gcs-bucket/failed`)
+- `INPUT_DIRECTORY`: Input files location (`/data/in`)
+- `PROCESSED_DIRECTORY`: Processed files location (`/data/processed`)
+- `FAILED_DIRECTORY`: Failed files location (`/data/failed`)
 - `BATCH_PROCESSING_MODE`: `continuous` or `single` (`continuous`)
 
 ## Configuration
