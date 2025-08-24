@@ -10,6 +10,7 @@ public class BatchSettings
 
 public class FileProcessingSettings
 {
+    public string BucketName { get; set; } = string.Empty;
     public string InputDirectory { get; set; } = "/mnt/gcs-bucket";
     public string ProcessedDirectory { get; set; } = "/mnt/gcs-bucket/processed";
     public string FailedDirectory { get; set; } = "/mnt/gcs-bucket/failed";
