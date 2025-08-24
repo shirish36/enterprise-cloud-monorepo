@@ -243,10 +243,7 @@ resource "google_cloud_run_v2_job" "batch_job" {
           value = google_storage_bucket.processing_bucket.name
         }
 
-        volume_mounts {
-          name = "gcs-bucket"
-          mount_path = "/mnt/gcs-bucket"
-        }
+  # No volume_mounts needed; GCS FUSE is mounted at runtime in the container
       }
 
   # GCS FUSE volumes are not supported as a Terraform block. Mount in container at runtime using gcsfuse.
