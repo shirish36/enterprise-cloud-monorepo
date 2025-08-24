@@ -12,6 +12,8 @@ public class FileProcessingSettings
 {
     // Directory to scan for files (GCS bucket mounted at /data/in)
     public string InputDirectory { get; set; } = "/data/in";
+    // Directory to copy files to (GCS bucket mounted at /data/out)
+    public string OutputDirectory { get; set; } = "/data/out";
 }
 
 public class DatabaseSettings

@@ -244,17 +244,32 @@ public class FileProcessor : IFileProcessor
     {
         try
         {
+            var outputDir = _settings.OutputDirectory ?? "/data/out";
+            if (!Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
             var files = Directory.GetFiles(_inputDirectory);
             foreach (var file in files)
             {
-                _logger.LogInformation("Reading file: {FileName}", Path.GetFileName(file));
+                var fileName = Path.GetFileName(file);
+                _logger.LogInformation("Reading file: {FileName}", fileName);
                 var content = await File.ReadAllTextAsync(file);
-                _logger.LogInformation("Contents of {FileName}:\n{Content}", Path.GetFileName(file), content);
+                _logger.LogInformation("Contents of {FileName}:\n{Content}", fileName, content);
+
+                // Copy file to output directory with timestamp
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+                var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                var ext = Path.GetExtension(fileName);
+                var targetFileName = $"{nameWithoutExt}_{timestamp}{ext}";
+                var targetPath = Path.Combine(outputDir, targetFileName);
+                File.Copy(file, targetPath, overwrite: true);
+                _logger.LogInformation("Copied file {Source} to {Target}", file, targetPath);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reading files in {Directory}", _inputDirectory);
+            _logger.LogError(ex, "Error reading or copying files in {Directory}", _inputDirectory);
         }
     }
 
