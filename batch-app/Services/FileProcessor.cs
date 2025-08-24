@@ -54,7 +54,6 @@ public class FileProcessor : IFileProcessor
         {
             var files = Directory.GetFiles(_inputDirectory);
             _logger.LogInformation("Found {FileCount} files to process in {Directory}", files.Length, _inputDirectory);
-            _logger.LogInformation("Found {FileCount} files to process in {Directory}", files.Count, _inputDirectory);
             foreach (var file in files)
             {
                 _logger.LogDebug("File to process: {FileName} ({FileSize} bytes)", Path.GetFileName(file), new FileInfo(file).Length);
