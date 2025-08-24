@@ -77,38 +77,149 @@ public class FileProcessor : IFileProcessor
 
         var processed = 0;
         var failed = 0;
-
+        var status = "Success";
+        var startTime = DateTime.UtcNow;
         try
         {
-            // Determine file type and process accordingly
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            
-            switch (extension)
+            if (extension == ".csv")
             {
-                case ".csv":
+                if (fileName.StartsWith("Product", StringComparison.OrdinalIgnoreCase))
+                {
+                    (processed, failed) = await ProcessProductCsvAsync(filePath, batchId);
+                }
+                else if (fileName.StartsWith("Order", StringComparison.OrdinalIgnoreCase))
+                {
+                    (processed, failed) = await ProcessOrderCsvAsync(filePath, batchId);
+                }
+                else
+                {
                     (processed, failed) = await ProcessCsvFileAsync(filePath, batchId);
-                    break;
-                case ".txt":
-                    (processed, failed) = await ProcessTextFileAsync(filePath, batchId);
-                    break;
-                case ".json":
-                    // Removed ProcessJsonFileAsync call; not needed for current requirements
-                    break;
-                default:
-                    _logger.LogWarning("Unsupported file type: {Extension} for file: {FileName}", extension, fileName);
-                    failed = 1;
-                    break;
+                }
             }
-
-            _logger.LogInformation("Completed processing file: {FileName}. Processed: {Processed}, Failed: {Failed}", 
-                fileName, processed, failed);
+            else if (extension == ".txt")
+            {
+                (processed, failed) = await ProcessTextFileAsync(filePath, batchId);
+            }
+            else
+            {
+                _logger.LogWarning("Unsupported file type: {Extension} for file: {FileName}", extension, fileName);
+                failed = 1;
+            }
+            _logger.LogInformation("Completed processing file: {FileName}. Processed: {Processed}, Failed: {Failed}", fileName, processed, failed);
+            status = failed == 0 ? "Success" : "PartialSuccess";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing file: {FileName}", fileName);
             failed = 1;
+            status = "Failed";
         }
+        finally
+        {
+            // Log processed file
+            var record = new ProcessedFileRecord
+            {
+                FileName = fileName,
+                FilePath = filePath,
+                FileSize = new FileInfo(filePath).Length,
+                ProcessedAt = startTime,
+                RecordsProcessed = processed,
+                RecordsFailed = failed,
+                Status = status,
+                ErrorMessage = failed > 0 ? $"{failed} records failed" : null,
+                ProcessingDuration = DateTime.UtcNow - startTime
+            };
+            await _databaseService.InsertProcessedFileRecordAsync(record);
+        }
+        return (processed, failed);
+    }
 
+    // New methods for product and order CSVs
+    private async Task<(int processed, int failed)> ProcessProductCsvAsync(string filePath, string batchId)
+    {
+        var processed = 0;
+        var failed = 0;
+        var products = new List<ProductRecord>();
+        using var reader = new StreamReader(filePath);
+        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true });
+        try
+        {
+            await csv.ReadAsync();
+            csv.ReadHeader();
+            while (await csv.ReadAsync())
+            {
+                try
+                {
+                    var product = new ProductRecord
+                    {
+                        Name = csv.GetField("Name"),
+                        Description = csv.GetField("Description"),
+                        Price = csv.GetField<decimal>("Price"),
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    products.Add(product);
+                    processed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to process product row in file: {FileName}", Path.GetFileName(filePath));
+                    failed++;
+                }
+            }
+            if (products.Any())
+            {
+                await _databaseService.InsertProductsAsync(products);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading product CSV file: {FileName}", Path.GetFileName(filePath));
+            throw;
+        }
+        return (processed, failed);
+    }
+
+    private async Task<(int processed, int failed)> ProcessOrderCsvAsync(string filePath, string batchId)
+    {
+        var processed = 0;
+        var failed = 0;
+        var orders = new List<OrderRecord>();
+        using var reader = new StreamReader(filePath);
+        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture) { HasHeaderRecord = true });
+        try
+        {
+            await csv.ReadAsync();
+            csv.ReadHeader();
+            while (await csv.ReadAsync())
+            {
+                try
+                {
+                    var order = new OrderRecord
+                    {
+                        ProductId = csv.GetField<int>("ProductId"),
+                        Quantity = csv.GetField<int>("Quantity"),
+                        OrderDate = csv.GetField<DateTime>("OrderDate")
+                    };
+                    orders.Add(order);
+                    processed++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to process order row in file: {FileName}", Path.GetFileName(filePath));
+                    failed++;
+                }
+            }
+            if (orders.Any())
+            {
+                await _databaseService.InsertOrdersAsync(orders);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading order CSV file: {FileName}", Path.GetFileName(filePath));
+            throw;
+        }
         return (processed, failed);
     }
 
