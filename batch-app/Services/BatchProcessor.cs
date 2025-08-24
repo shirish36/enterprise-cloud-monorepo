@@ -96,48 +96,9 @@ public class BatchProcessor : BackgroundService
 
     private async Task ProcessBatchAsync()
     {
-        var batchId = GenerateBatchId();
-        var stopwatch = Stopwatch.StartNew();
-        _logger.LogInformation("Starting batch processing {BatchId} at {Time}", batchId, DateTime.UtcNow);
-
-        try
-        {
-            // List all files in /data/in
-            var inputDir = "/data/in";
-            if (!Directory.Exists(inputDir))
-            {
-                _logger.LogWarning("Input directory does not exist: {InputDirectory}", inputDir);
-                return;
-            }
-            var files = Directory.GetFiles(inputDir);
-            _logger.LogInformation("Found {FileCount} files in {InputDirectory}", files.Length, inputDir);
-            foreach (var file in files)
-            {
-                _logger.LogInformation("File: {FileName}", Path.GetFileName(file));
-            }
-
-            // If sample.txt exists, read and log its contents
-            var sampleFile = Path.Combine(inputDir, "sample.txt");
-            if (File.Exists(sampleFile))
-            {
-                _logger.LogInformation("Reading contents of sample.txt...");
-                var content = await File.ReadAllTextAsync(sampleFile);
-                _logger.LogInformation("Contents of sample.txt:\n{Content}", content);
-            }
-            else
-            {
-                _logger.LogInformation("sample.txt not found in {InputDirectory}", inputDir);
-            }
-
-            stopwatch.Stop();
-            _logger.LogInformation("Batch processing {BatchId} completed in {Duration}ms", batchId, stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            _logger.LogError(ex, "Critical error in batch processing {BatchId} after {Duration}ms", batchId, stopwatch.ElapsedMilliseconds);
-            throw;
-        }
+        _logger.LogInformation("Listing and reading all files in /data/in");
+        await _fileProcessor.LogAllFileContentsAsync();
+        _logger.LogInformation("Batch job completed: all files in /data/in have been listed and their contents logged.");
     }
 
     private string GenerateBatchId()

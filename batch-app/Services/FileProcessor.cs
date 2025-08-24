@@ -14,6 +14,7 @@ public interface IFileProcessor
     Task<(int processed, int failed)> ProcessFileAsync(string filePath, string batchId);
     Task MoveFileAsync(string sourceFilePath, string destinationDirectory);
     Task DeleteFileAsync(string filePath);
+    Task LogAllFileContentsAsync();
 }
 
 public class FileProcessor : IFileProcessor
@@ -22,16 +23,14 @@ public class FileProcessor : IFileProcessor
     private readonly FileProcessingSettings _settings;
     private readonly ILogger<FileProcessor> _logger;
     private readonly string _inputDirectory;
-    private readonly string _processedDirectory;
-    private readonly string _failedDirectory;
+    // Removed processed and failed directory references
 
     public FileProcessor(IOptions<FileProcessingSettings> settings, ILogger<FileProcessor> logger)
     {
         _settings = settings.Value;
         _logger = logger;
         _inputDirectory = _settings.InputDirectory;
-        _processedDirectory = _settings.ProcessedDirectory;
-        _failedDirectory = _settings.FailedDirectory;
+    // Removed initialization of processed and failed directories
     }
 
     public Task ValidateConfigurationAsync()
@@ -44,9 +43,7 @@ public class FileProcessor : IFileProcessor
         // No need to create or check permissions for processed/failed directories; these are managed by the GCS mount.
         _logger.LogInformation("File processing configuration validated successfully");
         _logger.LogInformation("Input Directory: {InputDirectory}", _inputDirectory);
-        _logger.LogInformation("Processed Directory: {ProcessedDirectory}", _processedDirectory);
-        _logger.LogInformation("Failed Directory: {FailedDirectory}", _failedDirectory);
-        _logger.LogInformation("File Pattern: {FilePattern}", _settings.FilePattern);
+    // Removed logging for processed and failed directories and file pattern
         return Task.CompletedTask;
     }
 
@@ -55,9 +52,8 @@ public class FileProcessor : IFileProcessor
         // Reads files from the local mount path (e.g., /data/in) as provided by Cloud Run GCS volume mount
         try
         {
-            var files = Directory.GetFiles(_inputDirectory, _settings.FilePattern, SearchOption.TopDirectoryOnly)
-                .Take(_settings.MaxFilesPerBatch)
-                .ToList();
+            var files = Directory.GetFiles(_inputDirectory);
+            _logger.LogInformation("Found {FileCount} files to process in {Directory}", files.Length, _inputDirectory);
             _logger.LogInformation("Found {FileCount} files to process in {Directory}", files.Count, _inputDirectory);
             foreach (var file in files)
             {
@@ -94,7 +90,7 @@ public class FileProcessor : IFileProcessor
                     (processed, failed) = await ProcessTextFileAsync(filePath, batchId);
                     break;
                 case ".json":
-                    (processed, failed) = await ProcessJsonFileAsync(filePath, batchId);
+                    // Removed ProcessJsonFileAsync call; not needed for current requirements
                     break;
                 default:
                     _logger.LogWarning("Unsupported file type: {Extension} for file: {FileName}", extension, fileName);
@@ -245,11 +241,22 @@ public class FileProcessor : IFileProcessor
         return (processed, failed);
     }
 
-    private Task<(int processed, int failed)> ProcessJsonFileAsync(string filePath, string batchId)
+    public async Task LogAllFileContentsAsync()
     {
-        // Placeholder for JSON processing - implement based on your JSON structure
-        _logger.LogInformation("JSON file processing not yet implemented for: {FileName}", Path.GetFileName(filePath));
-    return Task.FromResult((0, 1));
+        try
+        {
+            var files = Directory.GetFiles(_inputDirectory);
+            foreach (var file in files)
+            {
+                _logger.LogInformation("Reading file: {FileName}", Path.GetFileName(file));
+                var content = await File.ReadAllTextAsync(file);
+                _logger.LogInformation("Contents of {FileName}:\n{Content}", Path.GetFileName(file), content);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading files in {Directory}", _inputDirectory);
+        }
     }
 
     private async Task ProcessRecordBatch(List<DataRecord> records, string batchId)
