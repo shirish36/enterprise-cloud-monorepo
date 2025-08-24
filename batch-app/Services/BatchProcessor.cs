@@ -12,18 +12,15 @@ public class BatchProcessor : BackgroundService
     private readonly ILogger<BatchProcessor> _logger;
     private readonly BatchSettings _batchSettings;
     private readonly IFileProcessor _fileProcessor;
-    private readonly IDatabaseService _databaseService;
 
     public BatchProcessor(
         ILogger<BatchProcessor> logger,
         IOptions<BatchSettings> batchSettings,
-        IFileProcessor fileProcessor,
-        IDatabaseService databaseService)
+        IFileProcessor fileProcessor)
     {
         _logger = logger;
         _batchSettings = batchSettings.Value;
         _fileProcessor = fileProcessor;
-        _databaseService = databaseService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -32,15 +29,6 @@ public class BatchProcessor : BackgroundService
 
         try
         {
-            // Initialize database schema
-            await _databaseService.InitializeDatabaseAsync();
-
-            // Test database connection
-            if (!await _databaseService.TestConnectionAsync())
-            {
-                throw new InvalidOperationException("Cannot connect to database");
-            }
-
             // Validate file processing configuration
             await _fileProcessor.ValidateConfigurationAsync();
 
@@ -110,127 +98,39 @@ public class BatchProcessor : BackgroundService
     {
         var batchId = GenerateBatchId();
         var stopwatch = Stopwatch.StartNew();
-        
         _logger.LogInformation("Starting batch processing {BatchId} at {Time}", batchId, DateTime.UtcNow);
 
         try
         {
-            // Get files to process
-            var filesToProcess = await _fileProcessor.GetFilesToProcessAsync();
-            var filesList = filesToProcess.ToList();
-
-            if (!filesList.Any())
+            // List all files in /data/in
+            var inputDir = "/data/in";
+            if (!Directory.Exists(inputDir))
             {
-                _logger.LogInformation("No files found to process in batch {BatchId}", batchId);
+                _logger.LogWarning("Input directory does not exist: {InputDirectory}", inputDir);
                 return;
             }
-
-            _logger.LogInformation("Processing {FileCount} files in batch {BatchId}", filesList.Count, batchId);
-
-            var totalProcessed = 0;
-            var totalFailed = 0;
-            var successfulFiles = 0;
-            var failedFiles = 0;
-
-            // Process each file
-            foreach (var filePath in filesList)
+            var files = Directory.GetFiles(inputDir);
+            _logger.LogInformation("Found {FileCount} files in {InputDirectory}", files.Length, inputDir);
+            foreach (var file in files)
             {
-                var fileName = Path.GetFileName(filePath);
-                var fileStopwatch = Stopwatch.StartNew();
-                
-                try
-                {
-                    _logger.LogInformation("Processing file: {FileName}", fileName);
+                _logger.LogInformation("File: {FileName}", Path.GetFileName(file));
+            }
 
-                    // Create initial processed file record
-                    var fileInfo = new FileInfo(filePath);
-                    var processedFileRecord = new ProcessedFileRecord
-                    {
-                        FileName = fileName,
-                        FilePath = filePath,
-                        FileSize = fileInfo.Length,
-                        ProcessedAt = DateTime.UtcNow,
-                        Status = "Processing"
-                    };
-
-                    await _databaseService.InsertProcessedFileRecordAsync(processedFileRecord);
-
-                    // Process the file
-                    var (processed, failed) = await _fileProcessor.ProcessFileAsync(filePath, batchId);
-                    
-                    fileStopwatch.Stop();
-                    
-                    // Update statistics
-                    totalProcessed += processed;
-                    totalFailed += failed;
-
-                    if (failed == 0)
-                    {
-                        successfulFiles++;
-                        
-                        // Move file to processed directory
-                        await _fileProcessor.MoveFileAsync(filePath, GetProcessedDirectory());
-                        
-                        // Update database record
-                        await _databaseService.UpdateProcessedFileRecordAsync(
-                            processedFileRecord.Id, processed, failed, "Completed", null, fileStopwatch.Elapsed);
-                        
-                        _logger.LogInformation("Successfully processed file: {FileName} ({Processed} records) in {Duration}ms", 
-                            fileName, processed, fileStopwatch.ElapsedMilliseconds);
-                    }
-                    else
-                    {
-                        failedFiles++;
-                        
-                        // Move file to failed directory
-                        await _fileProcessor.MoveFileAsync(filePath, GetFailedDirectory());
-                        
-                        var errorMessage = $"Processing completed with {failed} failed records out of {processed + failed} total records";
-                        await _databaseService.UpdateProcessedFileRecordAsync(
-                            processedFileRecord.Id, processed, failed, "CompletedWithErrors", errorMessage, fileStopwatch.Elapsed);
-                        
-                        _logger.LogWarning("File processed with errors: {FileName} ({Processed} successful, {Failed} failed) in {Duration}ms", 
-                            fileName, processed, failed, fileStopwatch.ElapsedMilliseconds);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    failedFiles++;
-                    fileStopwatch.Stop();
-                    
-                    _logger.LogError(ex, "Failed to process file: {FileName} in {Duration}ms", fileName, fileStopwatch.ElapsedMilliseconds);
-                    
-                    try
-                    {
-                        // Move file to failed directory
-                        await _fileProcessor.MoveFileAsync(filePath, GetFailedDirectory());
-                        
-                        // Update database record if possible
-                        var errorMessage = $"Processing failed: {ex.Message}";
-                        // Note: We'd need the record ID here - could be improved by returning it from the insert
-                    }
-                    catch (Exception moveEx)
-                    {
-                        _logger.LogError(moveEx, "Failed to move failed file: {FileName}", fileName);
-                    }
-                }
+            // If sample.txt exists, read and log its contents
+            var sampleFile = Path.Combine(inputDir, "sample.txt");
+            if (File.Exists(sampleFile))
+            {
+                _logger.LogInformation("Reading contents of sample.txt...");
+                var content = await File.ReadAllTextAsync(sampleFile);
+                _logger.LogInformation("Contents of sample.txt:\n{Content}", content);
+            }
+            else
+            {
+                _logger.LogInformation("sample.txt not found in {InputDirectory}", inputDir);
             }
 
             stopwatch.Stop();
-
-            // Log batch completion summary
-            _logger.LogInformation(
-                "Batch processing {BatchId} completed in {Duration}ms. " +
-                "Files: {SuccessfulFiles} successful, {FailedFiles} failed. " +
-                "Records: {TotalProcessed} processed, {TotalFailed} failed",
-                batchId, stopwatch.ElapsedMilliseconds, successfulFiles, failedFiles, totalProcessed, totalFailed);
-
-            // Additional metrics logging for monitoring
-            _logger.LogInformation("METRIC: BatchProcessingTime={Duration}ms BatchId={BatchId}", stopwatch.ElapsedMilliseconds, batchId);
-            _logger.LogInformation("METRIC: FilesProcessed={Count} BatchId={BatchId}", successfulFiles, batchId);
-            _logger.LogInformation("METRIC: FilesFailed={Count} BatchId={BatchId}", failedFiles, batchId);
-            _logger.LogInformation("METRIC: RecordsProcessed={Count} BatchId={BatchId}", totalProcessed, batchId);
-            _logger.LogInformation("METRIC: RecordsFailed={Count} BatchId={BatchId}", totalFailed, batchId);
+            _logger.LogInformation("Batch processing {BatchId} completed in {Duration}ms", batchId, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -245,13 +145,5 @@ public class BatchProcessor : BackgroundService
         return $"BATCH_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}";
     }
 
-    private string GetProcessedDirectory()
-    {
-        return Environment.GetEnvironmentVariable("PROCESSED_DIRECTORY") ?? "/mnt/gcs-bucket/processed";
-    }
-
-    private string GetFailedDirectory()
-    {
-        return Environment.GetEnvironmentVariable("FAILED_DIRECTORY") ?? "/mnt/gcs-bucket/failed";
-    }
+    // No-op: DB and file move logic commented out for demo mode
 }
