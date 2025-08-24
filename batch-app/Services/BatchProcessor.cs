@@ -12,15 +12,18 @@ public class BatchProcessor : BackgroundService
     private readonly ILogger<BatchProcessor> _logger;
     private readonly BatchSettings _batchSettings;
     private readonly IFileProcessor _fileProcessor;
+    private readonly IDatabaseService _databaseService;
 
     public BatchProcessor(
         ILogger<BatchProcessor> logger,
         IOptions<BatchSettings> batchSettings,
-        IFileProcessor fileProcessor)
+        IFileProcessor fileProcessor,
+        IDatabaseService databaseService)
     {
         _logger = logger;
         _batchSettings = batchSettings.Value;
         _fileProcessor = fileProcessor;
+        _databaseService = databaseService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -99,6 +102,9 @@ public class BatchProcessor : BackgroundService
         _logger.LogInformation("Listing and reading all files in /data/in");
         await _fileProcessor.LogAllFileContentsAsync();
         _logger.LogInformation("Batch job completed: all files in /data/in have been listed and their contents logged.");
+
+        // Log DB table contents after processing
+        await _databaseService.LogAllTablesAsync();
     }
 
     private string GenerateBatchId()

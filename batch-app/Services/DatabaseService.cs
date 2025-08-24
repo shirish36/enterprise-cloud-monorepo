@@ -13,7 +13,11 @@ public interface IDatabaseService
     Task InsertDataRecordsAsync(IEnumerable<DataRecord> records);
     Task InsertProcessedFileRecordAsync(ProcessedFileRecord record);
     Task UpdateProcessedFileRecordAsync(int recordId, int recordsProcessed, int recordsFailed, string status, string? errorMessage, TimeSpan duration);
+    Task LogTableContentsAsync(string tableName, int maxRows = 10);
+    Task LogAllTablesAsync();
 }
+
+
 
 public class DatabaseService : IDatabaseService
 {
@@ -37,6 +41,45 @@ public class DatabaseService : IDatabaseService
             var masked = MaskPassword(_connectionString);
             _logger.LogInformation("Database connection string: {ConnectionString}", masked);
         }
+    }
+
+    public async Task LogTableContentsAsync(string tableName, int maxRows = 10)
+    {
+        try
+        {
+            using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync();
+            var sql = $"SELECT TOP (@MaxRows) * FROM [{tableName}]";
+            using var command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@MaxRows", maxRows);
+            using var reader = await command.ExecuteReaderAsync();
+            var colCount = reader.FieldCount;
+            _logger.LogInformation("Contents of table {TableName} (up to {MaxRows} rows):", tableName, maxRows);
+            // Print column headers
+            var headers = string.Join(" | ", Enumerable.Range(0, colCount).Select(reader.GetName));
+            _logger.LogInformation(headers);
+            // Print rows
+            int rowNum = 0;
+            while (await reader.ReadAsync())
+            {
+                var row = string.Join(" | ", Enumerable.Range(0, colCount).Select(i => reader.IsDBNull(i) ? "NULL" : reader.GetValue(i)?.ToString()));
+                _logger.LogInformation(row);
+                rowNum++;
+            }
+            if (rowNum == 0)
+                _logger.LogInformation("(No rows found)");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log contents of table {TableName}", tableName);
+        }
+    }
+
+    public async Task LogAllTablesAsync()
+    {
+        await LogTableContentsAsync("Products");
+        await LogTableContentsAsync("Orders");
+        await LogTableContentsAsync("ProcessedFiles");
     }
 
     private string MaskPassword(string connStr)
