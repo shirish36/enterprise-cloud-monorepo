@@ -1,8 +1,4 @@
-        public async Task DeleteFileAsync(string objectName)
-        {
-            await _storageClient.DeleteObjectAsync(_bucketName, objectName);
-            _logger.LogInformation("Deleted {ObjectName} from bucket {Bucket}", objectName, _bucketName);
-        }
+
 using Google.Cloud.Storage.V1;
 using Microsoft.Extensions.Logging;
 using System;
