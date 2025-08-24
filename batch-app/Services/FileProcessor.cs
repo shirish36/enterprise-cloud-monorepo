@@ -20,44 +20,30 @@ public class FileProcessor : IFileProcessor
 {
     private readonly FileProcessingSettings _settings;
     private readonly ILogger<FileProcessor> _logger;
-    private readonly string _inputDirectory;
-    private readonly string _processedDirectory;
-    private readonly string _failedDirectory;
+    private readonly GcsFileService _gcsFileService;
+    private readonly string _inputPrefix;
+    private readonly string _processedPrefix;
+    private readonly string _failedPrefix;
 
-    public FileProcessor(IOptions<FileProcessingSettings> settings, ILogger<FileProcessor> logger)
+    public FileProcessor(IOptions<FileProcessingSettings> settings, ILogger<FileProcessor> logger, GcsFileService gcsFileService)
     {
         _settings = settings.Value;
         _logger = logger;
-
-        // Get directories from environment variables or configuration
-        _inputDirectory = Environment.GetEnvironmentVariable("INPUT_DIRECTORY") ?? _settings.InputDirectory;
-        _processedDirectory = Environment.GetEnvironmentVariable("PROCESSED_DIRECTORY") ?? _settings.ProcessedDirectory;
-        _failedDirectory = Environment.GetEnvironmentVariable("FAILED_DIRECTORY") ?? _settings.FailedDirectory;
+        _gcsFileService = gcsFileService;
+        _inputPrefix = _settings.InputDirectory?.Trim('/') + "/";
+        _processedPrefix = _settings.ProcessedDirectory?.Trim('/') + "/";
+        _failedPrefix = _settings.FailedDirectory?.Trim('/') + "/";
     }
 
     public async Task ValidateConfigurationAsync()
     {
-        _logger.LogInformation("Validating file processing configuration...");
-
-        // Check if input directory exists and is accessible
-        if (!Directory.Exists(_inputDirectory))
-        {
-            throw new DirectoryNotFoundException($"Input directory does not exist: {_inputDirectory}");
-        }
-
-        // Ensure processed and failed directories exist
-        await EnsureDirectoryExistsAsync(_processedDirectory);
-        await EnsureDirectoryExistsAsync(_failedDirectory);
-
-        // Test directory permissions
-        await TestDirectoryPermissionsAsync(_inputDirectory, "read");
-        await TestDirectoryPermissionsAsync(_processedDirectory, "write");
-        await TestDirectoryPermissionsAsync(_failedDirectory, "write");
-
-        _logger.LogInformation("File processing configuration validated successfully");
-        _logger.LogInformation("Input Directory: {InputDirectory}", _inputDirectory);
-        _logger.LogInformation("Processed Directory: {ProcessedDirectory}", _processedDirectory);
-        _logger.LogInformation("Failed Directory: {FailedDirectory}", _failedDirectory);
+        _logger.LogInformation("Validating GCS file processing configuration...");
+        // Check if bucket exists by listing files (will throw if not accessible)
+        var testFiles = await _gcsFileService.ListFilesAsync(_inputPrefix);
+        _logger.LogInformation("GCS bucket and prefixes validated successfully");
+        _logger.LogInformation("Input Prefix: {InputPrefix}", _inputPrefix);
+        _logger.LogInformation("Processed Prefix: {ProcessedPrefix}", _processedPrefix);
+        _logger.LogInformation("Failed Prefix: {FailedPrefix}", _failedPrefix);
         _logger.LogInformation("File Pattern: {FilePattern}", _settings.FilePattern);
     }
 
@@ -65,23 +51,21 @@ public class FileProcessor : IFileProcessor
     {
         try
         {
-            var files = Directory.GetFiles(_inputDirectory, _settings.FilePattern, SearchOption.TopDirectoryOnly)
+            var allFiles = await _gcsFileService.ListFilesAsync(_inputPrefix);
+            var files = allFiles
+                .Where(f => f.EndsWith(".csv") || f.EndsWith(".txt") || f.EndsWith(".json"))
                 .Take(_settings.MaxFilesPerBatch)
                 .ToList();
-
-            _logger.LogInformation("Found {FileCount} files to process in {Directory}", files.Count, _inputDirectory);
-            
+            _logger.LogInformation("Found {FileCount} files to process in {Prefix}", files.Count, _inputPrefix);
             foreach (var file in files)
             {
-                _logger.LogDebug("File to process: {FileName} ({FileSize} bytes)", 
-                    Path.GetFileName(file), new FileInfo(file).Length);
+                _logger.LogDebug("File to process: {FileName}", file);
             }
-
             return files;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scanning input directory: {Directory}", _inputDirectory);
+            _logger.LogError(ex, "Error scanning GCS input prefix: {Prefix}", _inputPrefix);
             return Enumerable.Empty<string>();
         }
     }
@@ -280,27 +264,17 @@ public class FileProcessor : IFileProcessor
     {
         try
         {
-            await EnsureDirectoryExistsAsync(destinationDirectory);
-            
-            var fileName = Path.GetFileName(sourceFilePath);
-            var destinationFilePath = Path.Combine(destinationDirectory, fileName);
-            
-            // If file already exists in destination, add timestamp
-            if (File.Exists(destinationFilePath))
-            {
-                var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-                var extension = Path.GetExtension(fileName);
-                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-                fileName = $"{nameWithoutExt}_{timestamp}{extension}";
-                destinationFilePath = Path.Combine(destinationDirectory, fileName);
-            }
-
-            File.Move(sourceFilePath, destinationFilePath);
-            _logger.LogInformation("Moved file from {Source} to {Destination}", sourceFilePath, destinationFilePath);
+            // Copy file in GCS and delete original
+            var fileName = System.IO.Path.GetFileName(sourceFilePath);
+            var destObjectName = destinationDirectory.TrimEnd('/') + "/" + fileName;
+            using var fileStream = await _gcsFileService.ReadFileAsync(sourceFilePath);
+            await _gcsFileService.UploadFileAsync(destObjectName, fileStream);
+            await _gcsFileService.DeleteFileAsync(sourceFilePath);
+            _logger.LogInformation("Moved GCS file from {Source} to {Destination}", sourceFilePath, destObjectName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error moving file from {Source} to {Destination}", sourceFilePath, destinationDirectory);
+            _logger.LogError(ex, "Error moving GCS file from {Source} to {Destination}", sourceFilePath, destinationDirectory);
             throw;
         }
     }
@@ -309,49 +283,15 @@ public class FileProcessor : IFileProcessor
     {
         try
         {
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-                _logger.LogInformation("Deleted file: {FilePath}", filePath);
-            }
+            await _gcsFileService.DeleteFileAsync(filePath);
+            _logger.LogInformation("Deleted GCS file: {FilePath}", filePath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting file: {FilePath}", filePath);
+            _logger.LogError(ex, "Error deleting GCS file: {FilePath}", filePath);
             throw;
         }
     }
 
-    private async Task EnsureDirectoryExistsAsync(string directoryPath)
-    {
-        if (!Directory.Exists(directoryPath))
-        {
-            Directory.CreateDirectory(directoryPath);
-            _logger.LogInformation("Created directory: {DirectoryPath}", directoryPath);
-        }
-    }
-
-    private async Task TestDirectoryPermissionsAsync(string directoryPath, string operation)
-    {
-        try
-        {
-            switch (operation.ToLower())
-            {
-                case "read":
-                    Directory.GetFiles(directoryPath, "*", SearchOption.TopDirectoryOnly);
-                    break;
-                case "write":
-                    var testFile = Path.Combine(directoryPath, $"test_permissions_{Guid.NewGuid()}.tmp");
-                    await File.WriteAllTextAsync(testFile, "test");
-                    File.Delete(testFile);
-                    break;
-            }
-            
-            _logger.LogDebug("Directory {Operation} permission test passed for: {DirectoryPath}", operation, directoryPath);
-        }
-        catch (Exception ex)
-        {
-            throw new UnauthorizedAccessException($"Insufficient {operation} permissions for directory: {directoryPath}", ex);
-        }
-    }
+    // Directory checks are not needed for GCS
 }

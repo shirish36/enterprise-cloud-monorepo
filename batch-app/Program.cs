@@ -19,6 +19,12 @@ builder.Services.Configure<BatchSettings>(builder.Configuration.GetSection("Batc
 builder.Services.Configure<FileProcessingSettings>(builder.Configuration.GetSection("FileProcessing"));
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection("Database"));
 
+builder.Services.AddSingleton<GcsFileService>(sp => {
+    var settings = sp.GetRequiredService<IOptions<FileProcessingSettings>>().Value;
+    var logger = sp.GetRequiredService<ILogger<GcsFileService>>();
+    var bucketName = Environment.GetEnvironmentVariable("BUCKET_NAME") ?? settings.BucketName;
+    return new GcsFileService(bucketName, logger);
+});
 builder.Services.AddSingleton<IFileProcessor, FileProcessor>();
 builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 builder.Services.AddHostedService<BatchProcessor>();
