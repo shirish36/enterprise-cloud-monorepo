@@ -130,7 +130,7 @@ public class FileProcessor : IFileProcessor
                 ErrorMessage = failed > 0 ? $"{failed} records failed" : null,
                 ProcessingDuration = DateTime.UtcNow - startTime
             };
-            await _databaseService.InsertProcessedFileRecordAsync(record);
+            await _databaseService.InsertProcessedFileAsync(record);
         }
         return (processed, failed);
     }
@@ -153,7 +153,7 @@ public class FileProcessor : IFileProcessor
                 {
                     var product = new ProductRecord
                     {
-                        Name = csv.GetField("Name"),
+                        Name = csv.GetField("Name") ?? string.Empty,
                         Description = csv.GetField("Description"),
                         Price = csv.GetField<decimal>("Price"),
                         CreatedAt = DateTime.UtcNow
