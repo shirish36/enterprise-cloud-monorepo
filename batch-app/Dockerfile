@@ -21,10 +21,19 @@ COPY appsettings.json /app/publish/
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS final
 WORKDIR /app
 
-# Install required packages for GCS FUSE (if needed for volume mounting)
 RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
+    gnupg \
+    lsb-release \
+    fuse \
+    && rm -rf /var/lib/apt/lists/*
+# Install gcsfuse
+RUN export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s` \
+    && echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list \
+    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - \
+    && apt-get update \
+    && apt-get install -y gcsfuse \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
@@ -34,8 +43,10 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN mkdir -p /mnt/gcs-bucket /mnt/gcs-bucket/processed /mnt/gcs-bucket/failed \
     && chown -R appuser:appuser /mnt/gcs-bucket
 
-# Copy the published application
 COPY --from=publish /app/publish .
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appuser /app
@@ -53,5 +64,5 @@ ENV FAILED_DIRECTORY=/mnt/gcs-bucket/failed
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD dotnet --version || exit 1
 
-# Define the entry point for the container
-ENTRYPOINT ["dotnet", "batch-app.dll"]
+# Use entrypoint script to mount GCS and run app
+ENTRYPOINT ["/entrypoint.sh"]
