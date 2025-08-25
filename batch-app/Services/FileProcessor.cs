@@ -131,6 +131,20 @@ public class FileProcessor : IFileProcessor
                 ProcessingDuration = DateTime.UtcNow - startTime
             };
             await _databaseService.InsertProcessedFileAsync(record);
+
+            // Move file to output directory with ddMMyyyy appended
+            var outputDir = _settings.OutputDirectory ?? "/data/out";
+            if (!Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName);
+            var dateStamp = DateTime.UtcNow.ToString("ddMMyyyy");
+            var destFileName = $"{nameWithoutExt}_{dateStamp}{extension}";
+            var destFilePath = Path.Combine(outputDir, destFileName);
+            File.Move(filePath, destFilePath);
+            _logger.LogInformation("Moved file from {Source} to {Destination}", filePath, destFilePath);
         }
         return (processed, failed);
     }

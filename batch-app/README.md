@@ -1,15 +1,25 @@
 
 # Batch Processing Service
+> **Note:** This batch app only accesses files via local folder paths. The GCS bucket is mounted as a local directory (e.g., `/data/in`) by Cloud Run. The app does not use any GCS SDK, gcsfuse, or direct GCS API access. All file operations are standard .NET file I/O on the local filesystem.
+## Recent Changes (August 2025)
+
+- The batch app now only lists files in the `/data/in` mount path; it no longer logs file contents (test logic removed).
+- Product and Order CSV processing includes detailed debug/info logging for each file and row.
+- Only files named like `Product*.csv` and `Order*.csv` (case-insensitive, no plural, no underscores/dashes) are loaded into the `Products` and `Orders` tables, respectively.
+- All other `.csv` files are loaded into the `DataRecords` table.
+- `.txt` files are loaded into the `DataRecords` table as delimited text.
+- See the troubleshooting section for common issues with file naming and data loading.
 
 
 A .NET 8 Console Application for processing files from a GCS bucket (mounted as a local directory) and storing data in MS SQL Server, designed for deployment as Cloud Run Jobs with GCS volume mounting.
 
 ## GCS Volume Mounting (Cloud Run Jobs)
 
+
 **How it works:**
 - The GCS bucket is mounted by Cloud Run as a local directory (e.g., `/data/in`).
-- The .NET batch app does not require any GCS SDK, gcsfuse, or bucket configuration.
-- The app simply reads files from the mount path using standard file I/O APIs (`System.IO`).
+- The batch app only accesses files using standard .NET file I/O APIs (`System.IO`) on the local filesystem.
+- The app does not use any GCS SDK, gcsfuse, or direct GCS API access.
 - All GCS authentication and mounting is handled by Cloud Run configuration, not by the app.
 
 **Example:**
@@ -21,6 +31,8 @@ If you mount your bucket at `/data/in`, the app will process files from `/data/i
 - `FAILED_DIRECTORY`: Failed files location (e.g., `/data/failed`)
 
 **No GCS logic is required in the .NET code.**
+
+**All file access is local.** The app is completely unaware of GCS; it only sees files in the mounted directory.
 
 
 ## Features
@@ -44,25 +56,28 @@ GCS Bucket (mounted as /data/in)
 
 ## File Processing Flow
 
-1. **Scan** input directory for files matching pattern
-2. **Process** files in batches (configurable size)
-3. **Parse** data based on file type (CSV, text, JSON)
-4. **Insert** data into MS SQL Server using bulk operations
-5. **Move** processed files to appropriate directory
+1. **Scan** input directory for files (no file content logging)
+2. **Process** files one by one
+3. **Parse** data based on file type and file name:
+  - `Product*.csv` → Products table (headers: Name, Description, Price)
+  - `Order*.csv` → Orders table (headers: ProductId, Quantity, OrderDate)
+  - Other `.csv` → DataRecords table
+  - `.txt` → DataRecords table (pipe/tab delimited)
+4. **Insert** data into MS SQL Server using parameterized queries and retry logic
+5. **Move** processed files to output directory with timestamp
 6. **Log** processing statistics and metrics
 
 ## Environment Variables
 
 ### Required
 - `SQL_CONNECTION_STRING`: MS SQL Server connection string
-- `GOOGLE_CLOUD_PROJECT`: GCP project ID for logging
-
 
 ### Optional (with defaults)
-- `INPUT_DIRECTORY`: Input files location (`/data/in`)
-- `PROCESSED_DIRECTORY`: Processed files location (`/data/processed`)
-- `FAILED_DIRECTORY`: Failed files location (`/data/failed`)
-- `BATCH_PROCESSING_MODE`: `continuous` or `single` (`continuous`)
+- `INPUT_DIRECTORY`: Input files location (default: `/data/in`)
+- `OUTPUT_DIRECTORY`: Output directory for processed files (default: `/data/out`)
+- `BATCH_PROCESSING_MODE`: `continuous` or `single` (default: `single`)
+
+> **Note:** All file paths are local. Set these to the mount paths provided by your container/orchestrator (e.g., `/data/in` for input, `/data/out` for output). No GCS-specific settings are required in the app.
 
 ## Configuration
 
@@ -76,9 +91,8 @@ GCS Bucket (mounted as /data/in)
     "EnableContinuousProcessing": true
   },
   "FileProcessing": {
-    "FilePattern": "*.csv",
-    "DeleteAfterProcessing": false,
-    "MaxFilesPerBatch": 10
+    "InputDirectory": "/data/in",
+    "OutputDirectory": "/data/out"
   },
   "Database": {
     "CommandTimeout": 30,
@@ -135,12 +149,10 @@ CREATE TABLE DataRecords (
 # Restore dependencies
 dotnet restore
 
-# Set environment variables
-export SQL_CONNECTION_STRING="Server=localhost;Database=BatchProcessing;Integrated Security=true;"
-export GOOGLE_CLOUD_PROJECT="your-project-id"
-export INPUT_DIRECTORY="./data/input"
-export PROCESSED_DIRECTORY="./data/processed"
-export FAILED_DIRECTORY="./data/failed"
+ # Set environment variables for local file handling
+ export SQL_CONNECTION_STRING="Server=localhost;Database=BatchProcessing;Integrated Security=true;"
+ export INPUT_DIRECTORY="./data/in"
+ export OUTPUT_DIRECTORY="./data/out"
 
 # Run the application
 dotnet run
@@ -169,9 +181,11 @@ docker build -t batch-processor .
 
 # Run with volume mounts for testing
 docker run --rm \
-  -v $(pwd)/data:/mnt/gcs-bucket \
+  -v $(pwd)/data/in:/data/in \
+  -v $(pwd)/data/out:/data/out \
   -e SQL_CONNECTION_STRING="your-connection-string" \
-  -e GOOGLE_CLOUD_PROJECT="your-project-id" \
+  -e INPUT_DIRECTORY="/data/in" \
+  -e OUTPUT_DIRECTORY="/data/out" \
   -e BATCH_PROCESSING_MODE="single" \
   batch-processor
 ```
@@ -208,7 +222,9 @@ gcloud run jobs execute batch-processing-job --region us-central1
 - Header row required
 - Comma-separated values
 - UTF-8 encoding
-- Up to 5 columns supported
+- For Products: Name, Description, Price
+- For Orders: ProductId, Quantity, OrderDate
+- Other CSVs: Up to 5 columns supported (DataRecords)
 
 ### Text Files
 - Pipe-delimited (`|`) or tab-delimited
@@ -325,10 +341,12 @@ WHERE ProcessedAt >= DATEADD(day, -1, GETUTCDATE());
    - Check bucket name and region
    - Review Cloud Run Job configuration
 
-3. **Files not processing**
-   - Check file permissions
-   - Verify file format
-   - Review input directory path
+3. **Files not processing or not loaded into Products/Orders tables**
+  - Check file permissions
+  - Verify file format and headers
+  - Review input directory path
+  - Ensure file names start with `Product` or `Order` (no plural, no underscores/dashes)
+  - Check logs for debug/info messages about file processing and row parsing
 
 4. **Out of memory errors**
    - Reduce batch size
