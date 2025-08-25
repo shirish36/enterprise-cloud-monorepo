@@ -86,8 +86,17 @@ public class FileProcessor : IFileProcessor
         var moveDateStamp = DateTime.UtcNow.ToString("ddMMyyyy");
         var moveDestFileName = $"{moveNameWithoutExt}_{moveDateStamp}{moveExtension}";
         var moveDestFilePath = Path.Combine(moveOutputDir, moveDestFileName);
-        File.Move(filePath, moveDestFilePath);
-        _logger.LogInformation("Moved file from {Source} to {Destination}", filePath, moveDestFilePath);
+        try
+        {
+            _logger.LogInformation("Attempting to move file from {Source} to {Destination}", filePath, moveDestFilePath);
+            File.Move(filePath, moveDestFilePath);
+            _logger.LogInformation("Moved file from {Source} to {Destination}", filePath, moveDestFilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to move file from {Source} to {Destination}", filePath, moveDestFilePath);
+            throw;
+        }
 
         // Use moveDestFilePath for all further processing
         filePath = moveDestFilePath;
