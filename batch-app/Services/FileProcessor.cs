@@ -73,8 +73,25 @@ public class FileProcessor : IFileProcessor
     public async Task<(int processed, int failed)> ProcessFileAsync(string filePath, string batchId)
     {
         var fileName = Path.GetFileName(filePath);
-        _logger.LogInformation("Processing file: {FileName}", fileName);
+        _logger.LogInformation("Preparing to move and process file: {FileName}", fileName);
 
+        // Move file to output directory with ddMMyyyy appended BEFORE processing
+        var moveOutputDir = _settings.OutputDirectory ?? "/data/out";
+        if (!Directory.Exists(moveOutputDir))
+        {
+            Directory.CreateDirectory(moveOutputDir);
+        }
+        var moveNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+        var moveExtension = Path.GetExtension(fileName);
+        var moveDateStamp = DateTime.UtcNow.ToString("ddMMyyyy");
+        var moveDestFileName = $"{moveNameWithoutExt}_{moveDateStamp}{moveExtension}";
+        var moveDestFilePath = Path.Combine(moveOutputDir, moveDestFileName);
+        File.Move(filePath, moveDestFilePath);
+        _logger.LogInformation("Moved file from {Source} to {Destination}", filePath, moveDestFilePath);
+
+        // Use moveDestFilePath for all further processing
+        filePath = moveDestFilePath;
+        fileName = Path.GetFileName(filePath);
         var processed = 0;
         var failed = 0;
         var status = "Success";
