@@ -72,10 +72,12 @@ public class FileProcessor : IFileProcessor
 
     public async Task<(int processed, int failed)> ProcessFileAsync(string filePath, string batchId)
     {
+        _logger.LogInformation("Entered ProcessFileAsync for file: {FilePath}", filePath);
         var fileName = Path.GetFileName(filePath);
         _logger.LogInformation("Preparing to move and process file: {FileName}", fileName);
 
         // Move file to output directory with ddMMyyyy appended BEFORE processing
+        _logger.LogInformation("Preparing to move file: {FilePath}", filePath);
         var moveOutputDir = _settings.OutputDirectory ?? "/data/out";
         if (!Directory.Exists(moveOutputDir))
         {
