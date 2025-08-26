@@ -64,7 +64,7 @@ resource "google_cloud_run_service" "api_service" {
       service_account_name = google_service_account.cloud_run_sa.email
       
       containers {
-  image = "${var.container_registry}/svr-docker/api-app:${var.image_tag}"
+  image = "${var.container_registry}/svr-docker/api-app/${var.image_tag}"
         
         resources {
           limits = {
@@ -116,7 +116,7 @@ resource "google_cloud_run_service" "web_service" {
       service_account_name = google_service_account.cloud_run_sa.email
       
       containers {
-  image = "${var.container_registry}/svr-docker/web-app:${var.image_tag}"
+  image = "${var.container_registry}/svr-docker/web-app/${var.image_tag}"
         
         resources {
           limits = {
@@ -209,7 +209,7 @@ resource "google_cloud_run_v2_job" "batch_job" {
       service_account = google_service_account.cloud_run_sa.email
 
       containers {
-  image = "${var.container_registry}/svr-docker/batch-app:${var.image_tag}"
+  image = "${var.container_registry}/svr-docker/batch-app/${var.image_tag}"
 
         resources {
           limits = {
