@@ -81,6 +81,16 @@ jobs:
     - name: Update Cloud Run Job
       if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       run: |
+        
+        - name: Log in to JFrog Artifactory Docker registry
+          run: echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login ${{ vars.JF_URL }} -u user --password-stdin
+
+        - name: Tag Docker image for JFrog
+          run: docker tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/enterprise-app-${{ env.SERVICE_NAME }}:${{ github.sha }} ${{ vars.JF_URL }}/batch-app:${{ github.sha }}
+
+        - name: Push Docker image to JFrog
+          run: docker push ${{ vars.JF_URL }}/batch-app:${{ github.sha }}
+
         # Update the job with new image
         gcloud run jobs replace <(gcloud run jobs describe enterprise-app-${{ env.SERVICE_NAME }}-job-${{ github.event.inputs.environment || 'prod' }} \
           --region ${{ vars.GCP_REGION || 'us-central1' }} \
