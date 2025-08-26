@@ -43,11 +43,15 @@ jobs:
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
       - name: Log in to JFrog Artifactory Docker registry
-        run: echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login ${{ vars.JF_URL }} -u ${{ secrets.JF_USER }} --password-stdin
+        run: |
+          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Web Image
-        run: docker build -t ${{ vars.JF_URL }}/web-app:$IMAGE_TAG ./web-app
+        run: |
+          docker build -t $JF_REGISTRY/web-app:$IMAGE_TAG ./web-app
       - name: Push Web Image to JFrog
-        run: docker push ${{ vars.JF_URL }}/web-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/web-app:$IMAGE_TAG
 
   build_push_batch:
     name: Build & Push Batch Image
@@ -65,11 +69,15 @@ jobs:
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
       - name: Log in to JFrog Artifactory Docker registry
-        run: echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login ${{ vars.JF_URL }} -u ${{ secrets.JF_USER }} --password-stdin
+        run: |
+          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Batch Image
-        run: docker build -t ${{ vars.JF_URL }}/batch-app:$IMAGE_TAG ./batch-app
+        run: |
+          docker build -t $JF_REGISTRY/batch-app:$IMAGE_TAG ./batch-app
       - name: Push Batch Image to JFrog
-        run: docker push ${{ vars.JF_URL }}/batch-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/batch-app:$IMAGE_TAG
   build_push_api:
     name: Build & Push API Image
     runs-on: ubuntu-latest
@@ -86,11 +94,15 @@ jobs:
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
       - name: Log in to JFrog Artifactory Docker registry
-        run: echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login ${{ vars.JF_URL }} -u ${{ secrets.JF_USER }} --password-stdin
+        run: |
+          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag API Image
-        run: docker build -t ${{ vars.JF_URL }}/api-app:$IMAGE_TAG ./api-app
+        run: |
+          docker build -t $JF_REGISTRY/api-app:$IMAGE_TAG ./api-app
       - name: Push API Image to JFrog
-        run: docker push ${{ vars.JF_URL }}/api-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/api-app:$IMAGE_TAG
 
   deploy_infra:
     name: Terraform Apply (Deploy Infra & Cloud Run)
