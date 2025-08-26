@@ -24,7 +24,7 @@ variable "app_name" {
 variable "container_registry" {
   description = "Container registry URL"
   type        = string
-  default     = "gcr.io"
+  default     = "trialc4bzjs.jfrog.io"
 }
 
 variable "image_tag" {
