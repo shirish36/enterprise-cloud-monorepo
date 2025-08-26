@@ -49,9 +49,9 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Web Image
         run: |
-          docker build -t $JF_REGISTRY/web-app:$IMAGE_TAG ./web-app
+          docker build -t $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG ./web-app
       - name: Push Web Image to JFrog
-        run: docker push $JF_REGISTRY/web-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG
 
   build_push_batch:
     name: Build & Push Batch Image
@@ -75,9 +75,9 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Batch Image
         run: |
-          docker build -t $JF_REGISTRY/batch-app:$IMAGE_TAG ./batch-app
+          docker build -t $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG ./batch-app
       - name: Push Batch Image to JFrog
-        run: docker push $JF_REGISTRY/batch-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG
   build_push_api:
     name: Build & Push API Image
     runs-on: ubuntu-latest
@@ -100,9 +100,9 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag API Image
         run: |
-          docker build -t $JF_REGISTRY/api-app:$IMAGE_TAG ./api-app
+          docker build -t $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG ./api-app
       - name: Push API Image to JFrog
-        run: docker push $JF_REGISTRY/api-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG
 
   deploy_infra:
     name: Terraform Apply (Deploy Infra & Cloud Run)
