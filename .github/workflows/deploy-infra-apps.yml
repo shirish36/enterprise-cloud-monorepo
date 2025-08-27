@@ -53,7 +53,12 @@ jobs:
 
       - name: Push Web Image to JFrog
         run: docker push $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG
-# --- Artifact Registry (GAR) steps ---
+      # Artifact Registry (GAR) authentication and push
+      - uses: google-github-actions/auth@v2
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Web Image for Artifact Registry
@@ -95,7 +100,12 @@ jobs:
 
       - name: Push Batch Image to JFrog
         run: docker push $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG
-# --- Artifact Registry (GAR) steps ---
+      # Artifact Registry (GAR) authentication and push
+      - uses: google-github-actions/auth@v2
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Batch Image for Artifact Registry
@@ -136,7 +146,12 @@ jobs:
 
       - name: Push API Image to JFrog
         run: docker push $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG
-# --- Artifact Registry (GAR) steps ---
+      # Artifact Registry (GAR) authentication and push
+      - uses: google-github-actions/auth@v2
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag API Image for Artifact Registry
