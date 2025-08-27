@@ -69,14 +69,6 @@ jobs:
       - name: Push Web Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
 
-          # --- Artifact Registry (GAR) steps ---
-           - name: Authenticate Docker to Artifact Registry
-             run: gcloud auth configure-docker us-central1-docker.pkg.dev
-           - name: Tag Web Image for Artifact Registry
-             run: docker tag $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
-           - name: Push Web Image to Artifact Registry
-             run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
-
   build_push_batch:
     name: Build & Push Batch Image
     runs-on: ubuntu-latest
@@ -118,14 +110,6 @@ jobs:
         run: docker tag $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
       - name: Push Batch Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
-
-          # --- Artifact Registry (GAR) steps ---
-           - name: Authenticate Docker to Artifact Registry
-             run: gcloud auth configure-docker us-central1-docker.pkg.dev
-           - name: Tag Batch Image for Artifact Registry
-             run: docker tag $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
-           - name: Push Batch Image to Artifact Registry
-             run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
   build_push_api:
     name: Build & Push API Image
     runs-on: ubuntu-latest
@@ -159,22 +143,6 @@ jobs:
         run: docker tag $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
       - name: Push API Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
-
-      # --- Artifact Registry (GAR) steps ---
-      - name: Authenticate Docker to Artifact Registry
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev
-      - name: Tag API Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
-      - name: Push API Image to Artifact Registry
-        run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
-
-          # --- Artifact Registry (GAR) steps ---
-           - name: Authenticate Docker to Artifact Registry
-             run: gcloud auth configure-docker us-central1-docker.pkg.dev
-           - name: Tag API Image for Artifact Registry
-             run: docker tag $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
-           - name: Push API Image to Artifact Registry
-             run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
 
   deploy_infra:
     name: Terraform Apply (Deploy Infra & Cloud Run)
