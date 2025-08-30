@@ -80,9 +80,9 @@ jobs:
       #   run: docker push $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG
       # --- End JFrog steps ---
       - name: Build & Tag Web Image for GAR
-        run: docker build -t gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG ./web-app
+        run: docker build -t gcr.io/gifted-palace-468618-q5/enterprise-web:$IMAGE_TAG ./web-app
       - name: Push Web Image to GAR
-        run: docker push gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG
+        run: docker push gcr.io/gifted-palace-468618-q5/enterprise-web:$IMAGE_TAG
 
   build_push_batch:
     name: Build & Push Batch Image
@@ -124,9 +124,9 @@ jobs:
       #   run: docker push $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG
       # --- End JFrog steps ---
       - name: Build & Tag Batch Image for GAR
-        run: docker build -t gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG ./batch-app
+        run: docker build -t gcr.io/gifted-palace-468618-q5/enterprise-batch:$IMAGE_TAG ./batch-app
       - name: Push Batch Image to GAR
-        run: docker push gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG
+        run: docker push gcr.io/gifted-palace-468618-q5/enterprise-batch:$IMAGE_TAG
   build_push_api:
     name: Build & Push API Image
     runs-on: ubuntu-latest
@@ -167,9 +167,9 @@ jobs:
       #   run: docker push $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG
       # --- End JFrog steps ---
       - name: Build & Tag API Image for GAR
-        run: docker build -t gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG ./api-app
+        run: docker build -t gcr.io/gifted-palace-468618-q5/enterprise-api:$IMAGE_TAG ./api-app
       - name: Push API Image to GAR
-        run: docker push gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG
+        run: docker push gcr.io/gifted-palace-468618-q5/enterprise-api:$IMAGE_TAG
 
   deploy_infra:
     name: Terraform Apply (Deploy Infra & Cloud Run)
