@@ -28,7 +28,7 @@ jobs:
         with:
           token_format: 'access_token'
           workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
       - name: List gcloud auth accounts
         run: gcloud auth list
   set_image_tag:
@@ -52,7 +52,7 @@ jobs:
         with:
           token_format: 'access_token'
           workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Set short image tag
@@ -96,7 +96,7 @@ jobs:
         with:
           token_format: 'access_token'
           workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Set short image tag
@@ -139,7 +139,7 @@ jobs:
         with:
           token_format: 'access_token'
           workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Set short image tag
