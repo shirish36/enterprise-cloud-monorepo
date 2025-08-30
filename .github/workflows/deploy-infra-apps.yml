@@ -54,10 +54,10 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Web Image
         run: |
-          docker build -t $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG ./web-app
+          docker build -t $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG ./web-app
 
       - name: Push Web Image to JFrog
-        run: docker push $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
@@ -67,7 +67,7 @@ jobs:
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Web Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
+        run: docker tag $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
       - name: Push Web Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
 
@@ -75,7 +75,7 @@ jobs:
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Web Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/web-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
+        run: docker tag $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
       - name: Push Web Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/web-app:$IMAGE_TAG
 
@@ -106,10 +106,10 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag Batch Image
         run: |
-          docker build -t $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG ./batch-app
+          docker build -t $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG ./batch-app
 
       - name: Push Batch Image to JFrog
-        run: docker push $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
@@ -119,7 +119,7 @@ jobs:
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Batch Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
+        run: docker tag $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
       - name: Push Batch Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
 
@@ -127,7 +127,7 @@ jobs:
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag Batch Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
+        run: docker tag $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
       - name: Push Batch Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/batch-app:$IMAGE_TAG
   build_push_api:
@@ -157,10 +157,10 @@ jobs:
           echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
       - name: Build & Tag API Image
         run: |
-          docker build -t $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG ./api-app
+          docker build -t $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG ./api-app
 
       - name: Push API Image to JFrog
-        run: docker push $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG
+        run: docker push $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
@@ -170,7 +170,7 @@ jobs:
       - name: Authenticate Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev
       - name: Tag API Image for Artifact Registry
-        run: docker tag $JF_REGISTRY/svr-docker/api-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
+        run: docker tag $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
       - name: Push API Image to Artifact Registry
         run: docker push us-central1-docker.pkg.dev/gifted-palace-468618-q5/svr-rem-art/api-app:$IMAGE_TAG
 
