@@ -56,8 +56,14 @@ jobs:
         run: |
           docker build -t $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG ./web-app
 
-      - name: Push Web Image to JFrog
-        run: docker push $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG
+      # - name: Push Web Image to JFrog
+      #   run: docker push $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG
+      - name: Tag Web Image for GAR
+        run: docker tag $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG
+      - name: Authenticate Docker to GAR
+        run: gcloud auth configure-docker gcr.io
+      - name: Push Web Image to GAR
+        run: docker push gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
@@ -97,8 +103,14 @@ jobs:
         run: |
           docker build -t $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG ./batch-app
 
-      - name: Push Batch Image to JFrog
-        run: docker push $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG
+      # - name: Push Batch Image to JFrog
+      #   run: docker push $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG
+      - name: Tag Batch Image for GAR
+        run: docker tag $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG
+      - name: Authenticate Docker to GAR
+        run: gcloud auth configure-docker gcr.io
+      - name: Push Batch Image to GAR
+        run: docker push gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
@@ -137,8 +149,14 @@ jobs:
         run: |
           docker build -t $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG ./api-app
 
-      - name: Push API Image to JFrog
-        run: docker push $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG
+      # - name: Push API Image to JFrog
+      #   run: docker push $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG
+      - name: Tag API Image for GAR
+        run: docker tag $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG
+      - name: Authenticate Docker to GAR
+        run: gcloud auth configure-docker gcr.io
+      - name: Push API Image to GAR
+        run: docker push gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG
       # Artifact Registry (GAR) authentication and push
       - uses: google-github-actions/auth@v2
         with:
