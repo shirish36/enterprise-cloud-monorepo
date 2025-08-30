@@ -47,19 +47,19 @@ jobs:
         uses: docker/setup-buildx-action@v3
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
-      - name: Log in to JFrog Artifactory Docker registry
-        run: |
-          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
-          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
-          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
-      - name: Build & Tag Web Image
-        run: |
-          docker build -t $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG ./web-app
-
+      # --- JFrog Artifactory build & push (commented for future use) ---
+      # - name: Log in to JFrog Artifactory Docker registry
+      #   run: |
+      #     JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+      #     echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+      #     echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
+      # - name: Build & Tag Web Image for JFrog
+      #   run: docker build -t $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG ./web-app
       # - name: Push Web Image to JFrog
       #   run: docker push $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG
-      - name: Tag Web Image for GAR
-        run: docker tag $JF_REGISTRY/ceosvr-docker/web-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG
+      # --- End JFrog steps ---
+      - name: Build & Tag Web Image for GAR
+        run: docker build -t gcr.io/gifted-palace-468618-q5/web-app:$IMAGE_TAG ./web-app
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Push Web Image to GAR
@@ -94,19 +94,19 @@ jobs:
         uses: docker/setup-buildx-action@v3
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
-      - name: Log in to JFrog Artifactory Docker registry
-        run: |
-          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
-          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
-          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
-      - name: Build & Tag Batch Image
-        run: |
-          docker build -t $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG ./batch-app
-
+      # --- JFrog Artifactory build & push (commented for future use) ---
+      # - name: Log in to JFrog Artifactory Docker registry
+      #   run: |
+      #     JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+      #     echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+      #     echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
+      # - name: Build & Tag Batch Image for JFrog
+      #   run: docker build -t $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG ./batch-app
       # - name: Push Batch Image to JFrog
       #   run: docker push $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG
-      - name: Tag Batch Image for GAR
-        run: docker tag $JF_REGISTRY/ceosvr-docker/batch-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG
+      # --- End JFrog steps ---
+      - name: Build & Tag Batch Image for GAR
+        run: docker build -t gcr.io/gifted-palace-468618-q5/batch-app:$IMAGE_TAG ./batch-app
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Push Batch Image to GAR
@@ -140,19 +140,19 @@ jobs:
         uses: docker/setup-buildx-action@v3
       # - name: Authenticate Docker to gcr.io
       #   run: gcloud auth configure-docker gcr.io
-      - name: Log in to JFrog Artifactory Docker registry
-        run: |
-          JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
-          echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
-          echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
-      - name: Build & Tag API Image
-        run: |
-          docker build -t $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG ./api-app
-
+      # --- JFrog Artifactory build & push (commented for future use) ---
+      # - name: Log in to JFrog Artifactory Docker registry
+      #   run: |
+      #     JF_REGISTRY=$(echo "${{ vars.JF_URL }}" | sed 's~https\?://~~')
+      #     echo "${{ secrets.JF_ACCESS_TOKEN }}" | docker login $JF_REGISTRY -u ${{ secrets.JF_USER }} --password-stdin
+      #     echo "JF_REGISTRY=$JF_REGISTRY" >> $GITHUB_ENV
+      # - name: Build & Tag API Image for JFrog
+      #   run: docker build -t $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG ./api-app
       # - name: Push API Image to JFrog
       #   run: docker push $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG
-      - name: Tag API Image for GAR
-        run: docker tag $JF_REGISTRY/ceosvr-docker/api-app:$IMAGE_TAG gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG
+      # --- End JFrog steps ---
+      - name: Build & Tag API Image for GAR
+        run: docker build -t gcr.io/gifted-palace-468618-q5/api-app:$IMAGE_TAG ./api-app
       - name: Authenticate Docker to GAR
         run: gcloud auth configure-docker gcr.io
       - name: Push API Image to GAR
