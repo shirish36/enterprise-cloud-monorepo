@@ -2,26 +2,6 @@
 
 name: Deploy Infra and Apps (GCP Cloud Run Suite)
 
-# --- Test GCP Auth Job ---
-on:
-  workflow_dispatch:
-    # Allows manual trigger for auth test
-
-jobs:
-  test_gcp_auth:
-    name: Test GCP Auth
-    runs-on: ubuntu-latest
-    steps:
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: 'access_token'
-          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
-      - name: List gcloud auth accounts
-        run: gcloud auth list
-
-
 permissions:
   id-token: write
   contents: read
@@ -39,6 +19,31 @@ on:
 
 
 jobs:
+  test_gcp_auth:
+    name: Test GCP Auth
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+      - name: List gcloud auth accounts
+        run: gcloud auth list
+
+    test_gcp_auth:
+      name: Test GCP Auth
+      runs-on: ubuntu-latest
+      steps:
+        - name: Authenticate to Google Cloud
+          uses: google-github-actions/auth@v2
+          with:
+            token_format: 'access_token'
+            workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+            service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+        - name: List gcloud auth accounts
+          run: gcloud auth list
   set_image_tag:
     runs-on: ubuntu-latest
     outputs:
