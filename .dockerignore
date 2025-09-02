@@ -1,0 +1,11 @@
+**/bin
+**/obj
+**/.terraform
+**/.git
+.git
+.github
+*.md
+LICENSE
+Dockerfile*
+README*
+*.tfstate*
